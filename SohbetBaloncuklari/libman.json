@@ -23,6 +23,14 @@
         "jquery-ui.min.css",
         "jquery-ui.min.js"
       ]
+    },
+    {
+      "provider": "cdnjs",
+      "library": "jqueryui-touch-punch@0.2.3",
+      "destination": "wwwroot/js/jqueryui-touch-punch/",
+      "files": [
+        "jquery.ui.touch-punch.min.js"
+      ]
     }
   ]
 }
