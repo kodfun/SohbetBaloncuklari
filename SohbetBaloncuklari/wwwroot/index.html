@@ -1,0 +1,204 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Sohbet Baloncukları</title>
+    <link href="js/jquery-ui-dist/jquery-ui.min.css" rel="stylesheet" />
+    <style>
+        .sutun {
+            float: left;
+            width: 50%;
+        }
+
+        .clear::after {
+            content: "";
+            display: block;
+            clear: both;
+        }
+
+        .baloncuk {
+            cursor: pointer;
+            position: absolute;
+            top: calc(50% - 50px);
+            left: calc(50% - 50px);
+            width: 100px;
+            height: 100px;
+            border: 2px solid black;
+            border-radius: 10%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-color: rgba(0, 0, 0, .2);
+        }
+
+            .baloncuk > h4 {
+                background-color: black;
+                margin: 0;
+                padding: 5px 0;
+                color: white;
+                text-align: center;
+            }
+
+            .baloncuk > p {
+                margin: 0;
+                flex-grow: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .baloncuk.ben {
+                z-index: 999;
+            }
+
+                .baloncuk.ben > h4 {
+                    background-color: lime;
+                }
+    </style>
+</head>
+<body>
+    <h1>Sohbet Baloncukları</h1>
+    <div>
+        <input type="text" id="mesaj" placeholder="mesajınız.." />
+    </div>
+
+    <div class="clear">
+        <div class="sutun">
+            <h2>Mesajlar</h2>
+            <ul id="mesajlar"></ul>
+        </div>
+        <div class="sutun">
+            <h2>Kullanıcılar</h2>
+            <ul id="kullanicilar"></ul>
+        </div>
+    </div>
+
+    <div id="baloncuklar"></div>
+
+    <!--<div class="baloncuk">
+        <h4>Kullanıcı Adı</h4>
+        <p>Mesaj</p>
+    </div>-->
+
+    <script src="js/jquery/dist/jquery.min.js"></script>
+    <script src="js/jquery-ui-dist/jquery-ui.min.js"></script>
+    <script src="js/microsoft/signalr/dist/browser/signalr.min.js"></script>
+    <script>
+        var bagli = false;
+        var kullaniciId = null;
+        var takmaAd = prompt("Takma adınız:");
+        var ulMesajlar = document.getElementById("mesajlar");
+        var ulKullanicilar = document.getElementById("kullanicilar");
+        var txtMesaj = document.getElementById("mesaj");
+        var divBaloncuklar = document.getElementById("baloncuklar");
+
+        // bağlantı nesnemizi oluşturalım
+        var connection = new signalR.HubConnectionBuilder()
+            .withUrl("/SohbetHub").build();
+
+        // sunucu bize yeni mesajı gönderdiğinde
+        connection.on("YeniMesajAlindi", function (id, ad, mesaj) {
+            var li = document.createElement("li");
+            li.textContent = ad + ": " + mesaj;
+            ulMesajlar.prepend(li);
+            var baloncukMetin = document.querySelector('.baloncuk[data-kullanici-id="' + id + '"] > p');
+            baloncukMetin.textContent = mesaj;
+        });
+
+        // sunucu bize bir kullanıcının sohbete girdiğini duyurduğunda
+        connection.on("KullaniciSohbeteGirdi", function (id, ad) {
+            listeyeKullaniciEkle(id, ad);
+        });
+
+        // sunucu bize bir kullanıcının sohbetten ayrıldığını duyurduğunda
+        connection.on("KullaniciSohbettenCikti", function (id, ad) {
+            document.querySelector('li[data-kullanici-id="' + id + '"]').remove();
+            document.querySelector('.baloncuk[data-kullanici-id="' + id + '"]').remove();
+        });
+
+        // kullanıcı konum değiştirdiğinde
+        connection.on("KullaniciKonumDegistirdi", function (id, x, y) {
+            konumDegistir(id, x, y);
+        });
+
+        connection.on("SohbeteGirildi", function (id, kullaniciListesi) {
+            kullaniciId = id;
+            bagli = true;
+
+            for (var i in kullaniciListesi) {
+                var k = kullaniciListesi[i];
+                listeyeKullaniciEkle(k.id, k.takmaAd, k.x, k.y);
+            }
+        });
+
+        function listeyeKullaniciEkle(id, ad, x, y) {
+            var li = document.createElement("li");
+            li.setAttribute("data-kullanici-id", id);
+            li.textContent = ad;
+            ulKullanicilar.prepend(li);
+            baloncukOlustur(id, ad, id == kullaniciId, x, y);
+        }
+
+        function sohbeteKatil() {
+            connection.invoke("SohbeteGir", takmaAd).catch(function (err) {
+                console.log("Sohbete katılırken hata oluştu.");
+            })
+        }
+
+        function baloncukOlustur(id, ad, isDraggable = false, x, y) {
+            var baloncuk = document.createElement("div");
+            baloncuk.setAttribute("data-kullanici-id", id);
+            baloncuk.classList.add("baloncuk");
+            var h4 = document.createElement("h4");
+            h4.textContent = ad;
+            var p = document.createElement("p");
+            baloncuk.append(h4);
+            baloncuk.append(p);
+            divBaloncuklar.append(baloncuk);
+
+            if (isDraggable) {
+                $(baloncuk).draggable({
+                    drag: function () {
+                        var x = parseInt(baloncuk.style.left);
+                        var y = parseInt(baloncuk.style.top);
+                        connection.invoke("KonumGonder", x, y);
+                    }
+                });
+                baloncuk.classList.add("ben");
+            }
+
+            if (x >= 0 && y >= 0) {
+                baloncuk.style.left = x + "px";
+                baloncuk.style.top = y + "px";
+            }
+        }
+
+        function konumDegistir(id, x, y) {
+            var baloncuk = document.querySelector('.baloncuk[data-kullanici-id="' + id + '"]');
+            baloncuk.style.left = x + "px";
+            baloncuk.style.top = y + "px";
+        }
+
+        connection.start().then(function () {
+            sohbeteKatil();
+        }).catch(function (err) {
+            // bağlanırken hata olduğunda
+            console.log(err);
+        });
+
+        // kullanıcı sunucuya mesaj gönderirken
+        txtMesaj.onkeydown = function (event) {
+            if (bagli && event.keyCode == 13) {
+                var mesaj = txtMesaj.value.trim();
+                txtMesaj.value = "";
+                if (mesaj && takmaAd) {
+                    connection.invoke("MesajGonder", mesaj).catch(function (err) {
+                        console.log("Mesaj gönderilirken hata oluştu: " + err);
+                    });
+                }
+            }
+        };
+
+    </script>
+</body>
+</html>

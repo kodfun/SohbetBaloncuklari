@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "defaultProvider": "unpkg",
+  "libraries": [
+    {
+      "library": "@microsoft/signalr@3.1.8",
+      "destination": "wwwroot/js/microsoft/signalr/",
+      "files": [
+        "dist/browser/signalr.min.js"
+      ]
+    },
+    {
+      "library": "jquery@3.5.1",
+      "destination": "wwwroot/js/jquery/",
+      "files": [
+        "dist/jquery.min.js"
+      ]
+    },
+    {
+      "library": "jquery-ui-dist@1.12.1",
+      "destination": "wwwroot/js/jquery-ui-dist/",
+      "files": [
+        "jquery-ui.min.css",
+        "jquery-ui.min.js"
+      ]
+    }
+  ]
+}
